@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Dilatasi AR 3D Lengkap - Matematika SMP | Dengan Kamera Live + Marker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #000;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Canvas AR (kamera live) akan diisi oleh AR.js */
+        .ar-scene {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        /* UI Panel - tampil di atas kamera AR */
+        .dilatasi-panel {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 12px;
+            z-index: 100;
+            pointer-events: auto;
+            max-height: 48vh;
+            overflow-y: auto;
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        /* Mode layar lebar (tablet/landscape) */
+        @media (min-width: 800px) and (orientation: landscape) {
+            .dilatasi-panel {
+                width: 380px;
+                bottom: 20px;
+                right: 20px;
+                left: auto;
+                max-height: 90vh;
+            }
+        }
+        
+        .panel-section {
+            margin-bottom: 12px;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            padding: 10px;
+        }
+        
+        .panel-section h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+            color: #06b6d4;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 5px;
+        }
+        
+        .shape-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .shape-btn {
+            background: #1e293b;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: #cbd5e1;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .shape-btn.active {
+            background: linear-gradient(95deg, #4f46e5, #06b6d4);
+            color: white;
+        }
+        
+        .coord-input-group {
+            margin-bottom: 8px;
+        }
+        
+        .coord-input-group label {
+            font-size: 10px;
+            color: #94a3b8;
+            display: block;
+            margin-bottom: 3px;
+        }
+        
+        .coord-input {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .coord-input input {
+            flex: 1;
+            padding: 5px 8px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: white;
+            font-size: 11px;
+        }
+        
+        .scale-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        
+        .scale-btn {
+            background: #1e293b;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        
+        .scale-btn.active {
+            background: linear-gradient(95deg, #4f46e5, #06b6d4);
+        }
+        
+        .scale-custom {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+        }
+        
+        .scale-custom input {
+            width: 70px;
+            padding: 5px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+        }
+        
+        button {
+            background: #06b6d4;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            opacity: 0.85;
+            transform: scale(0.98);
+        }
+        
+        .btn-dilate {
+            background: linear-gradient(105deg, #4f46e5, #0d9488);
+            width: 100%;
+            margin-top: 8px;
+            padding: 8px;
+        }
+        
+        .btn-animate {
+            background: linear-gradient(105deg, #06b6d4, #dc2626);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 5px;
+            font-size: 10px;
+        }
+        
+        .result-box {
+            background: linear-gradient(115deg, #1e1b4b, #0d9488);
+            padding: 8px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .result-coord {
+            font-family: monospace;
+            font-size: 10px;
+            text-align: center;
+            color: white;
+        }
+        
+        .penyelesaian-box {
+            background: #fffbeb;
+            border-left: 3px solid #06b6d4;
+            padding: 8px;
+            border-radius: 10px;
+            font-size: 9px;
+            max-height: 100px;
+            overflow-y: auto;
+            color: #1e293b;
+        }
+        
+        .rumus-box {
+            background: #cffafe;
+            border-radius: 10px;
+            padding: 6px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 9px;
+            margin-top: 6px;
+        }
+        
+        .result-table-container {
+            margin-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            border-radius: 10px;
+            background: #0f172a;
+        }
+        
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+        
+        .result-table th {
+            background: linear-gradient(95deg, #4f46e5, #06b6d4);
+            color: white;
+            padding: 5px;
+            position: sticky;
+            top: 0;
+        }
+        
+        .result-table td {
+            padding: 4px;
+            text-align: center;
+            border-bottom: 1px solid #334155;
+            color: #cbd5e1;
+        }
+        
+        .animation-status {
+            background: #1e293b;
+            padding: 5px;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 9px;
+            margin-top: 8px;
+            color: #94a3b8;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            background: #0f172a;
+            padding: 5px 10px;
+            border-radius: 30px;
+        }
+        
+        .speed-control input {
+            flex: 1;
+        }
+        
+        .info-ar-top {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px 12px;
+            border-radius: 30px;
+            color: #06b6d4;
+            font-size: 10px;
+            z-index: 100;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        
+        .legend-ar {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 30px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+            font-size: 8px;
+            backdrop-filter: blur(4px);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: white;
+        }
+        
+        .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .color-dot.red { background: #e11d48; box-shadow: 0 0 4px #e11d48; }
+        .color-dot.cyan { background: #06b6d4; box-shadow: 0 0 4px #06b6d4; }
+        .color-dot.yellow { background: #facc15; box-shadow: 0 0 4px #facc15; }
+        .color-dot.purple { background: #8b5cf6; }
+        
+        /* Scrollbar styling */
+        .dilatasi-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        .dilatasi-panel::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        .dilatasi-panel::-webkit-scrollbar-thumb {
+            background: #06b6d4;
+            border-radius: 4px;
+        }
+        
+        .hidden-input {
+            display: none;
+        }
+        
+        .center-label {
+            font-size: 8px;
+            background: rgba(0,0,0,0.6);
+            padding: 1px 4px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+    </style>
+    
+    <!-- A-Frame + AR.js + extras -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/build/aframe-ar.js"></script>
+    
+    <!-- Three.js tambahan untuk kontrol 3D -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <!-- Informasi AR Top -->
+    <div class="info-ar-top">
+        <i class="fas fa-video"></i> AR MODE | Arahkan ke MARKER HIRO
+    </div>
+    
+    <div class="legend-ar">
+        <div class="legend-item"><div class="color-dot red"></div> Asli</div>
+        <div class="legend-item"><div class="color-dot cyan"></div> Dilatasi</div>
+        <div class="legend-item"><div class="color-dot yellow"></div> Pusat</div>
+        <div class="legend-item"><div class="color-dot purple"></div> Jejak</div>
+    </div>
+    
+    <!-- Scene AR.js dengan Marker Hiro -->
+    <a-scene class="ar-scene"
+             embedded
+             arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
+        
+        <!-- Marker Hiro -->
+        <a-marker preset="hiro" id="ar-marker">
+            <!-- Kontainer utama untuk semua objek dilatasi -->
+            <a-entity id="dilatasi-container" position="0 0 0" rotation="-90 0 0">
+                <!-- Objek akan diisi oleh JS -->
+            </a-entity>
+        </a-marker>
+        
+        <!-- Kamera AR -->
+        <a-entity camera></a-entity>
+    </a-scene>
+    
+    <!-- UI Panel Kontrol (semua fitur tetap ada) -->
+    <div class="dilatasi-panel" id="controlPanel">
+        <div class="panel-section">
+            <h3><i class="fas fa-shapes"></i> Pilih Bangun Datar</h3>
+            <div class="shape-selector" id="shapeSelector">
+                <button data-shape="point" class="shape-btn"><i class="fas fa-circle"></i> Titik</button>
+                <button data-shape="triangle" class="shape-btn active"><i class="fas fa-triangle"></i> Segitiga</button>
+                <button data-shape="square" class="shape-btn"><i class="fas fa-square"></i> Persegi</button>
+                <button data-shape="rectangle" class="shape-btn"><i class="fas fa-rectangle-ad"></i> Persegi Panjang</button>
+                <button data-shape="pentagon" class="shape-btn"><i class="fas fa-pentagon"></i> Segi Lima</button>
+                <button data-shape="hexagon" class="shape-btn"><i class="fas fa-hexagon"></i> Segi Enam</button>
+                <button data-shape="circle" class="shape-btn"><i class="fas fa-circle"></i> Lingkaran</button>
+            </div>
+        </div>
+        
+        <!-- Input Koordinat Dinamis -->
+        <div class="panel-section" id="dynamicInputs">
+            <h3><i class="fas fa-edit"></i> Koordinat Bangun</h3>
+            <div id="inputContainer"></div>
+        </div>
+        
+        <div class="panel-section">
+            <h3><i class="fas fa-arrows-alt"></i> Pusat Dilatasi (a, b)</h3>
+            <div class="coord-input-group">
+                <div class="coord-input">
+                    <input type="number" id="centerX" value="0" step="0.5" placeholder="a">
+                    <input type="number" id="centerY" value="0" step="0.5" placeholder="b">
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button id="applyCenterBtn" class="action-btn" style="background:#facc15; color:#0f172a;"><i class="fas fa-check"></i> Terapkan Pusat</button>
+                <button id="resetCenterBtn" class="action-btn" style="background:#f97316;"><i class="fas fa-undo"></i> Reset ke O</button>
+            </div>
+        </div>
+        
+        <div class="panel-section">
+            <h3><i class="fas fa-chart-simple"></i> Faktor Skala (k)</h3>
+            <div class="scale-buttons" id="scaleButtons">
+                <button data-scale="0.5" class="scale-btn">0.5x</button>
+                <button data-scale="2" class="scale-btn active">2x</button>
+                <button data-scale="3" class="scale-btn">3x</button>
+                <button data-scale="-1" class="scale-btn">-1x</button>
+            </div>
+            <div class="scale-custom">
+                <span style="font-size:10px;">Kustom:</span>
+                <input type="number" id="customScale" value="2" step="0.1">
+                <button id="applyCustomScale">Terapkan</button>
+            </div>
+            <button id="dilateBtn" class="btn-dilate"><i class="fas fa-expand-alt"></i> DILATASIKAN</button>
+            <button id="animateBtn" class="btn-dilate btn-animate"><i class="fas fa-play"></i> ANIMASI PERBESARAN</button>
+            <button id="stopBtn" class="btn-dilate" style="background:#dc2626; display:none;"><i class="fas fa-stop"></i> STOP</button>
+            <div class="speed-control">
+                <span>⚡</span>
+                <input type="range" id="speedSlider" min="10" max="80" value="35">
+                <span id="speedValue">35</span>ms
+            </div>
+        </div>
+        
+        <div class="panel-section">
+            <h3><i class="fas fa-chalkboard-user"></i> Hasil & Penyelesaian</h3>
+            <div class="result-box">
+                <div class="result-coord" id="resultCoord">🌀 Pilih bangun dan faktor skala</div>
+            </div>
+            <div class="rumus-box" id="rumusText">Rumus: (x,y) → (a + k(x-a), b + k(y-b))</div>
+            <div class="penyelesaian-box" id="penyelesaianStep">📐 Pilih bentuk, atur pusat dan skala</div>
+            
+            <!-- Tabel Hasil -->
+            <div class="result-table-container" id="resultTableContainer" style="display:none;">
+                <table class="result-table" id="resultTable">
+                    <thead><tr><th>Titik</th><th>Asli (x,y)</th><th>Hasil (x',y')</th></tr></thead>
+                    <tbody id="resultTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="animation-status" id="animStatus">
+            ✨ AR Mode: Arahkan kamera ke MARKER HIRO | Objek 3D muncul di atas marker
+        </div>
+    </div>
+    
+    <!-- Tombol toggle panel (untuk layar kecil) -->
+    <div style="position: absolute; bottom: 20px; right: 20px; z-index: 101;">
+        <button id="togglePanelBtn" style="background: #06b6d4; border-radius: 50%; width: 44px; height: 44px; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">
+            <i class="fas fa-chevron-up"></i>
+        </button>
+    </div>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        
+        // ==================== DATA DILATASI ====================
+        let currentShape = 'triangle';
+        let targetScale = 2;
+        let centerPoint = { x: 0, y: 0 };
+        let isAnimating = false;
+        let animInterval = null;
+        let currentAnimScale = 1;
+        
+        // Data koordinat untuk setiap bentuk (dalam skala lokal marker, 1 unit ≈ 20cm)
+        const shapeData = {
+            point: {
+                points: [{ x: 0, y: 0, label: 'P' }],
+                inputs: [{ id: 'pointX', label: 'P (x,y)', defaultX: 0, defaultY: 0 }]
+            },
+            triangle: {
+                points: [
+                    { x: 0, y: 1.2, label: 'A' },
+                    { x: -1, y: -0.8, label: 'B' },
+                    { x: 1, y: -0.8, label: 'C' }
+                ],
+                inputs: [
+                    { id: 'triA', label: 'A', defaultX: 0, defaultY: 1.2 },
+                    { id: 'triB', label: 'B', defaultX: -1, defaultY: -0.8 },
+                    { id: 'triC', label: 'C', defaultX: 1, defaultY: -0.8 }
+                ]
+            },
+            square: {
+                points: [
+                    { x: -0.8, y: 0.8, label: 'A' },
+                    { x: 0.8, y: 0.8, label: 'B' },
+                    { x: 0.8, y: -0.8, label: 'C' },
+                    { x: -0.8, y: -0.8, label: 'D' }
+                ],
+                inputs: [
+                    { id: 'sqA', label: 'A', defaultX: -0.8, defaultY: 0.8 },
+                    { id: 'sqB', label: 'B', defaultX: 0.8, defaultY: 0.8 },
+                    { id: 'sqC', label: 'C', defaultX: 0.8, defaultY: -0.8 },
+                    { id: 'sqD', label: 'D', defaultX: -0.8, defaultY: -0.8 }
+                ]
+            },
+            rectangle: {
+                points: [
+                    { x: -1.2, y: 0.7, label: 'A' },
+                    { x: 1.2, y: 0.7, label: 'B' },
+                    { x: 1.2, y: -0.7, label: 'C' },
+                    { x: -1.2, y: -0.7, label: 'D' }
+                ],
+                inputs: [
+                    { id: 'rectA', label: 'A', defaultX: -1.2, defaultY: 0.7 },
+                    { id: 'rectB', label: 'B', defaultX: 1.2, defaultY: 0.7 },
+                    { id: 'rectC', label: 'C', defaultX: 1.2, defaultY: -0.7 },
+                    { id: 'rectD', label: 'D', defaultX: -1.2, defaultY: -0.7 }
+                ]
+            },
+            pentagon: {
+                points: [],
+                radius: 1.0,
+                inputs: [{ id: 'pentRadius', label: 'Radius', defaultX: 1.0, isRadius: true }]
+            },
+            hexagon: {
+                points: [],
+                radius: 0.9,
+                inputs: [{ id: 'hexRadius', label: 'Radius', defaultX: 0.9, isRadius: true }]
+            },
+            circle: {
+                points: [],
+                radius: 1.0,
+                inputs: [{ id: 'circleRadius', label: 'Radius', defaultX: 1.0, isRadius: true }]
+            }
+        };
+        
+        // Generate titik untuk polygon
+        function generatePolygon(centerX, centerY, radius, sides, startAngle = -90) {
+            const points = [];
+            for (let i = 0; i < sides; i++) {
+                const angle = (startAngle + (i * 360 / sides)) * Math.PI / 180;
+                points.push({
+                    x: centerX + Math.cos(angle) * radius,
+                    y: centerY + Math.sin(angle) * radius,
+                    label: String.fromCharCode(65 + (i % 26))
+                });
+            }
+            return points;
+        }
+        
+        function generateCirclePoints(radius, segments = 32) {
+            const points = [];
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i * 360 / segments) * Math.PI / 180;
+                points.push({
+                    x: Math.cos(angle) * radius,
+                    y: Math.sin(angle) * radius,
+                    label: ''
+                });
+            }
+            return points;
+        }
+        
+        // Inisialisasi titik untuk polygon
+        function initPolygonShapes() {
+            shapeData.pentagon.points = generatePolygon(0, 0, shapeData.pentagon.radius, 5);
+            shapeData.hexagon.points = generatePolygon(0, 0, shapeData.hexagon.radius, 6);
+            shapeData.circle.points = generateCirclePoints(shapeData.circle.radius);
+        }
+        
+        // Ambil titik saat ini berdasarkan bentuk
+        function getCurrentPoints() {
+            switch(currentShape) {
+                case 'point': return shapeData.point.points;
+                case 'triangle': return shapeData.triangle.points;
+                case 'square': return shapeData.square.points;
+                case 'rectangle': return shapeData.rectangle.points;
+                case 'pentagon': return shapeData.pentagon.points;
+                case 'hexagon': return shapeData.hexagon.points;
+                case 'circle': return shapeData.circle.points;
+                default: return shapeData.triangle.points;
+            }
+        }
+        
+        // Fungsi dilatasi
+        function dilatePt(x, y, k, cx, cy) {
+            return { x: cx + k * (x - cx), y: cy + k * (y - cy) };
+        }
+        
+        function dilatePoints(points, k, cx, cy) {
+            return points.map(p => ({
+                x: cx + k * (p.x - cx),
+                y: cy + k * (p.y - cy),
+                label: p.label
+            }));
+        }
+        
+        function formatNum(n) { 
+            let v = Math.round(n * 100) / 100; 
+            return Math.abs(v) < 0.01 ? "0" : v; 
+        }
+        
+        // ==================== RENDERER AR ====================
+        // Kita akan menggunakan Three.js langsung di dalam marker untuk kontrol lebih baik
+        let originalGroup = null;
+        let dilatedGroup = null;
+        let centerSphere = null;
+        let trailLines = [];
+        let markerContainer = null;
+        
+        function createShapeObjects(points, color, opacity = 1, isTrail = false) {
+            const group = new THREE.Group();
+            
+            if (points.length === 0) return group;
+            
+            if (points.length === 1) {
+                const geometry = new THREE.SphereGeometry(0.12, 16, 16);
+                const material = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.3 });
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.set(points[0].x, points[0].y, 0.05);
+                group.add(sphere);
+                return group;
+            }
+            
+            // Untuk lingkaran atau polygon dengan banyak titik, buat LineLoop
+            const linePoints = points.map(p => new THREE.Vector3(p.x, p.y, 0.05));
+            const geometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+            const material = new THREE.LineBasicMaterial({ color: color, linewidth: 2 });
+            const loop = new THREE.LineLoop(geometry, material);
+            group.add(loop);
+            
+            // Tambahkan sphere di setiap titik (kecuali terlalu banyak)
+            if (points.length <= 20) {
+                points.forEach(p => {
+                    if (p.label !== '') {
+                        const sphereGeo = new THREE.SphereGeometry(0.07, 12, 12);
+                        const sphereMat = new THREE.MeshStandardMaterial({ color: color });
+                        const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+                        sphere.position.set(p.x, p.y, 0.06);
+                        group.add(sphere);
+                    }
+                });
+            }
+            
+            return group;
+        }
+        
+        function createTextLabel(text, x, y, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 128;
+            context.fillStyle = 'rgba(0,0,0,0.7)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.font = 'Bold 24px "Poppins"';
+            context.fillStyle = color;
+            context.textAlign = 'center';
+            context.fillText(text, canvas.width/2, canvas.height/2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(0.6, 0.3, 1);
+            sprite.position.set(x, y + 0.25, 0.1);
+            return sprite;
+        }
+        
+        function updateARDilation() {
+            if (!markerContainer) return;
+            
+            // Hapus semua yang lama
+            while (markerContainer.children.length > 0) {
+                markerContainer.remove(markerContainer.children[0]);
+            }
+            
+            const originalPoints = getCurrentPoints();
+            const dilatedPoints = dilatePoints(originalPoints, targetScale, centerPoint.x, centerPoint.y);
+            
+            // Tambahkan pusat dilatasi
+            const centerGeo = new THREE.SphereGeometry(0.18, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xfacc15, emissiveIntensity: 0.4 });
+            centerSphere = new THREE.Mesh(centerGeo, centerMat);
+            centerSphere.position.set(centerPoint.x, centerPoint.y, 0.08);
+            markerContainer.add(centerSphere);
+            
+            // Objek asli
+            originalGroup = createShapeObjects(originalPoints, 0xe11d48, 1);
+            markerContainer.add(originalGroup);
+            
+            // Objek hasil dilatasi
+            dilatedGroup = createShapeObjects(dilatedPoints, 0x06b6d4, 0.85);
+            markerContainer.add(dilatedGroup);
+            
+            // Jejak skala (scale path)
+            if (!isAnimating && targetScale !== 1 && originalPoints.length >= 2 && originalPoints.length <= 20) {
+                const steps = 5;
+                for (let i = 1; i <= steps; i++) {
+                    const interpScale = 1 + (i / steps) * (targetScale - 1);
+                    const trailPts = dilatePoints(originalPoints, interpScale, centerPoint.x, centerPoint.y);
+                    if (trailPts.length >= 2) {
+                        const points3d = trailPts.map(p => new THREE.Vector3(p.x, p.y, 0.02));
+                        const lineGeo = new THREE.BufferGeometry().setFromPoints(points3d);
+                        const lineMat = new THREE.LineBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.3 });
+                        const trailLine = new THREE.Line(lineGeo, lineMat);
+                        markerContainer.add(trailLine);
+                        trailLines.push(trailLine);
+                    }
+                }
+            }
+            
+            // Update tabel dan penyelesaian
+            updateTableAndSolution(originalPoints, dilatedPoints);
+        }
+        
+        function updateTableAndSolution(original, dilated) {
+            const tableContainer = document.getElementById('resultTableContainer');
+            const tableBody = document.getElementById('resultTableBody');
+            const resultCoord = document.getElementById('resultCoord');
+            const penyelesaianStep = document.getElementById('penyelesaianStep');
+            const rumusText = document.getElementById('rumusText');
+            
+            if (original.length > 0 && original.length <= 30) {
+                tableContainer.style.display = 'block';
+                tableBody.innerHTML = '';
+                
+                for (let i = 0; i < original.length; i++) {
+                    const orig = original[i];
+                    const dil = dilated[i] || { x: 0, y: 0 };
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style="color:#e11d48; font-weight:bold;">${orig.label || (original.length === 1 ? 'P' : `T${i+1}`)}</td>
+                        <td style="color:#e11d48;">(${formatNum(orig.x)}, ${formatNum(orig.y)})</td>
+                        <td style="color:#06b6d4;">(${formatNum(dil.x)}, ${formatNum(dil.y)})</td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+                
+                if (original.length === 1) {
+                    resultCoord.innerHTML = `Titik P(${formatNum(original[0].x)},${formatNum(original[0].y)}) → P'(${formatNum(dilated[0].x)}, ${formatNum(dilated[0].y)}) dengan k = ${targetScale}, pusat(${formatNum(centerPoint.x)},${formatNum(centerPoint.y)})`;
+                } else {
+                    resultCoord.innerHTML = `${currentShape.toUpperCase()} didilatasi dengan k = ${targetScale}, pusat(${formatNum(centerPoint.x)},${formatNum(centerPoint.y)}) | ${original.length} titik`;
+                }
+            } else {
+                tableContainer.style.display = 'none';
+                resultCoord.innerHTML = `🌀 ${currentShape.toUpperCase()} (${original.length} titik) didilatasi dengan k=${targetScale}`;
+            }
+            
+            // Penyelesaian langkah
+            rumusText.innerHTML = `📐 Rumus Dilatasi pusat (${formatNum(centerPoint.x)},${formatNum(centerPoint.y)}): (x,y) → (${formatNum(centerPoint.x)} + ${targetScale}(x-${formatNum(centerPoint.x)}), ${formatNum(centerPoint.y)} + ${targetScale}(y-${formatNum(centerPoint.y)}))`;
+            
+            if (original.length === 1 && original[0]) {
+                let p = original[0];
+                let pr = dilated[0];
+                penyelesaianStep.innerHTML = `
+                    <strong>📐 Diketahui:</strong><br>
+                    • Titik P(${formatNum(p.x)}, ${formatNum(p.y)})<br>
+                    • Faktor skala k = ${targetScale}<br>
+                    • Pusat dilatasi (${formatNum(centerPoint.x)}, ${formatNum(centerPoint.y)})<br>
+                    <strong>✏️ Perhitungan:</strong><br>
+                    x' = ${formatNum(centerPoint.x)} + ${targetScale} × (${formatNum(p.x)} - ${formatNum(centerPoint.x)}) = ${formatNum(pr.x)}<br>
+                    y' = ${formatNum(centerPoint.y)} + ${targetScale} × (${formatNum(p.y)} - ${formatNum(centerPoint.y)}) = ${formatNum(pr.y)}<br>
+                    <strong>✅ Hasil: P'(${formatNum(pr.x)}, ${formatNum(pr.y)})</strong>
+                `;
+            } else {
+                let html = `<strong>📐 Diketahui:</strong><br>• Bangun ${currentShape.toUpperCase()} (${original.length} titik)<br>• Faktor skala k = ${targetScale}<br>• Pusat dilatasi (${formatNum(centerPoint.x)}, ${formatNum(centerPoint.y)})<br><strong>📌 Hasil per titik:</strong><br>`;
+                for (let i = 0; i < Math.min(original.length, 4); i++) {
+                    html += `${original[i].label || 'T'}: (${formatNum(original[i].x)},${formatNum(original[i].y)}) → (${formatNum(dilated[i].x)},${formatNum(dilated[i].y)})<br>`;
+                }
+                if (original.length > 4) html += `<i>... lengkap lihat tabel</i><br>`;
+                html += `<strong>✅ ${targetScale > 1 ? 'Bangun membesar' : targetScale > 0 ? 'Bangun mengecil' : 'Bangun terbalik'}</strong>`;
+                penyelesaianStep.innerHTML = html;
+            }
+        }
+        
+        // Animasi
+        function startAnimation() {
+            if (isAnimating) return;
+            isAnimating = true;
+            currentAnimScale = 1;
+            document.getElementById('dilateBtn').disabled = true;
+            document.getElementById('animateBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'block';
+            
+            const speed = parseInt(document.getElementById('speedSlider').value);
+            if (animInterval) clearInterval(animInterval);
+            
+            animInterval = setInterval(() => {
+                if ((targetScale > 1 && currentAnimScale >= targetScale) || 
+                    (targetScale < 1 && currentAnimScale <= targetScale) || 
+                    targetScale === 1) {
+                    finishAnimation();
+                } else {
+                    let step = Math.abs(targetScale - 1) / 25;
+                    if (step < 0.05) step = 0.05;
+                    if (targetScale > 1) currentAnimScale = Math.min(currentAnimScale + step, targetScale);
+                    else if (targetScale < 1) currentAnimScale = Math.max(currentAnimScale - step, targetScale);
+                    
+                    // Update dengan skala interim
+                    const originalPoints = getCurrentPoints();
+                    const interimPoints = dilatePoints(originalPoints, currentAnimScale, centerPoint.x, centerPoint.y);
+                    
+                    if (dilatedGroup) markerContainer.remove(dilatedGroup);
+                    dilatedGroup = createShapeObjects(interimPoints, 0x06b6d4, 0.85);
+                    markerContainer.add(dilatedGroup);
+                    
+                    document.getElementById('animStatus').innerHTML = `🎬 Animasi berjalan k = ${currentAnimScale.toFixed(2)} / ${targetScale} | Arahkan ke marker`;
+                }
+            }, speed);
+        }
+        
+        function finishAnimation() {
+            if (animInterval) clearInterval(animInterval);
+            isAnimating = false;
+            currentAnimScale = targetScale;
+            document.getElementById('dilateBtn').disabled = false;
+            document.getElementById('animateBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+            updateARDilation();
+            document.getElementById('animStatus').innerHTML = '✅ Animasi selesai | Arahkan kamera ke MARKER HIRO';
+        }
+        
+        function stopAnimation() {
+            if (animInterval) clearInterval(animInterval);
+            isAnimating = false;
+            document.getElementById('dilateBtn').disabled = false;
+            document.getElementById('animateBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+            updateARDilation();
+            document.getElementById('animStatus').innerHTML = '⏹️ Animasi dihentikan';
+        }
+        
+        // ==================== INISIALISASI ====================
+        function init() {
+            initPolygonShapes();
+            
+            // Tunggu scene AR dan marker tersedia
+            setTimeout(() => {
+                const marker = document.querySelector('a-marker');
+                if (marker) {
+                    // Dapatkan container 3D dari marker
+                    const markerObj = marker.object3D;
+                    markerContainer = new THREE.Group();
+                    markerObj.add(markerContainer);
+                    
+                    // Tambahkan pencahayaan untuk marker
+                    const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+                    markerContainer.add(ambientLight);
+                    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                    dirLight.position.set(1, 2, 1);
+                    markerContainer.add(dirLight);
+                    
+                    updateARDilation();
+                    
+                    // Event marker detection
+                    marker.addEventListener('markerFound', () => {
+                        document.getElementById('animStatus').style.background = '#064e3b';
+                        document.getElementById('animStatus').innerHTML = '🎯 MARKER TERDETEKSI! Objek 3D muncul di atas marker';
+                    });
+                    marker.addEventListener('markerLost', () => {
+                        document.getElementById('animStatus').style.background = '#1e293b';
+                        document.getElementById('animStatus').innerHTML = '⚠️ Marker hilang. Arahkan kamera ke marker HIRO kembali';
+                    });
+                }
+            }, 1000);
+            
+            // Setup UI Event Listeners
+            setupUI();
+        }
+        
+        function setupUI() {
+            // Shape selection
+            document.querySelectorAll('.shape-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentShape = btn.dataset.shape;
+                    updateARDilation();
+                    generateInputFields();
+                });
+            });
+            
+            // Scale buttons
+            document.querySelectorAll('.scale-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    targetScale = parseFloat(btn.dataset.scale);
+                    document.getElementById('customScale').value = targetScale;
+                    updateARDilation();
+                });
+            });
+            
+            document.getElementById('applyCustomScale').addEventListener('click', () => {
+                const val = parseFloat(document.getElementById('customScale').value);
+                if (!isNaN(val)) {
+                    targetScale = val;
+                    document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
+                    updateARDilation();
+                }
+            });
+            
+            document.getElementById('applyCenterBtn').addEventListener('click', () => {
+                const cx = parseFloat(document.getElementById('centerX').value);
+                const cy = parseFloat(document.getElementById('centerY').value);
+                if (!isNaN(cx) && !isNaN(cy)) {
+                    centerPoint = { x: cx, y: cy };
+                    updateARDilation();
+                }
+            });
+            
+            document.getElementById('resetCenterBtn').addEventListener('click', () => {
+                centerPoint = { x: 0, y: 0 };
+                document.getElementById('centerX').value = 0;
+                document.getElementById('centerY').value = 0;
+                updateARDilation();
+            });
+            
+            document.getElementById('dilateBtn').addEventListener('click', () => {
+                if (isAnimating) stopAnimation();
+                updateARDilation();
+            });
+            
+            document.getElementById('animateBtn').addEventListener('click', startAnimation);
+            document.getElementById('stopBtn').addEventListener('click', stopAnimation);
+            
+            document.getElementById('speedSlider').addEventListener('input', (e) => {
+                document.getElementById('speedValue').innerText = e.target.value;
+            });
+            
+            // Toggle panel
+            let panelMinimized = false;
+            const panel = document.getElementById('controlPanel');
+            const toggleBtn = document.getElementById('togglePanelBtn');
+            toggleBtn.addEventListener('click', () => {
+                panelMinimized = !panelMinimized;
+                if (panelMinimized) {
+                    panel.style.maxHeight = '60px';
+                    panel.style.overflow = 'hidden';
+                    toggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+                } else {
+                    panel.style.maxHeight = '48vh';
+                    panel.style.overflow = 'auto';
+                    toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+                }
+            });
+            
+            generateInputFields();
+        }
+        
+        function generateInputFields() {
+            const container = document.getElementById('inputContainer');
+            const shape = shapeData[currentShape];
+            if (!shape) return;
+            
+            container.innerHTML = '';
+            
+            if (currentShape === 'point') {
+                container.innerHTML = `
+                    <div class="coord-input-group">
+                        <label>📍 Titik P (x, y)</label>
+                        <div class="coord-input">
+                            <input type="number" id="pointX" value="${shapeData.point.points[0].x}" step="0.2">
+                            <input type="number" id="pointY" value="${shapeData.point.points[0].y}" step="0.2">
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="applyPointBtn" class="action-btn primary">Terapkan</button>
+                        <button id="resetPointBtn" class="action-btn warning">Reset</button>
+                    </div>
+                `;
+                document.getElementById('applyPointBtn')?.addEventListener('click', () => {
+                    shapeData.point.points[0].x = parseFloat(document.getElementById('pointX').value) || 0;
+                    shapeData.point.points[0].y = parseFloat(document.getElementById('pointY').value) || 0;
+                    updateARDilation();
+                });
+                document.getElementById('resetPointBtn')?.addEventListener('click', () => {
+                    shapeData.point.points[0] = { x: 0, y: 0, label: 'P' };
+                    document.getElementById('pointX').value = 0;
+                    document.getElementById('pointY').value = 0;
+                    updateARDilation();
+                });
+            }
+            else if (currentShape === 'triangle' || currentShape === 'square' || currentShape === 'rectangle') {
+                let html = '';
+                shape.inputs.forEach((input, idx) => {
+                    const pt = shape.points[idx];
+                    html += `
+                        <div class="coord-input-group">
+                            <label>${input.label} (x, y)</label>
+                            <div class="coord-input">
+                                <input type="number" id="${input.id}X" value="${pt.x}" step="0.2">
+                                <input type="number" id="${input.id}Y" value="${pt.y}" step="0.2">
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `<div class="action-buttons"><button id="applyShapeBtn" class="action-btn primary">Terapkan</button><button id="resetShapeBtn" class="action-btn warning">Reset Default</button></div>`;
+                container.innerHTML = html;
+                
+                document.getElementById('applyShapeBtn')?.addEventListener('click', () => {
+                    shape.inputs.forEach((input, idx) => {
+                        shape.points[idx].x = parseFloat(document.getElementById(`${input.id}X`).value) || 0;
+                        shape.points[idx].y = parseFloat(document.getElementById(`${input.id}Y`).value) || 0;
+                    });
+                    updateARDilation();
+                });
+                document.getElementById('resetShapeBtn')?.addEventListener('click', () => {
+                    const defaults = {
+                        triangle: [{x:0,y:1.2},{x:-1,y:-0.8},{x:1,y:-0.8}],
+                        square: [{x:-0.8,y:0.8},{x:0.8,y:0.8},{x:0.8,y:-0.8},{x:-0.8,y:-0.8}],
+                        rectangle: [{x:-1.2,y:0.7},{x:1.2,y:0.7},{x:1.2,y:-0.7},{x:-1.2,y:-0.7}]
+                    };
+                    const def = defaults[currentShape];
+                    if (def) {
+                        def.forEach((pt, idx) => {
+                            shape.points[idx].x = pt.x;
+                            shape.points[idx].y = pt.y;
+                            document.getElementById(`${shape.inputs[idx].id}X`).value = pt.x;
+                            document.getElementById(`${shape.inputs[idx].id}Y`).value = pt.y;
+                        });
+                        updateARDilation();
+                    }
+                });
+            }
+            else if (currentShape === 'pentagon' || currentShape === 'hexagon' || currentShape === 'circle') {
+                const radiusKey = currentShape === 'pentagon' ? 'pentagon' : currentShape === 'hexagon' ? 'hexagon' : 'circle';
+                const currentRadius = shapeData[radiusKey].radius;
+                container.innerHTML = `
+                    <div class="coord-input-group">
+                        <label>📏 Radius / Jari-jari</label>
+                        <input type="number" id="radiusInput" value="${currentRadius}" step="0.1" style="width:100%; padding:6px;">
+                    </div>
+                    <div class="action-buttons"><button id="applyRadiusBtn" class="action-btn primary">Terapkan</button><button id="resetRadiusBtn" class="action-btn warning">Reset</button></div>
+                `;
+                
+                document.getElementById('applyRadiusBtn')?.addEventListener('click', () => {
+                    const newRadius = parseFloat(document.getElementById('radiusInput').value);
+                    if (!isNaN(newRadius)) {
+                        shapeData[radiusKey].radius = newRadius;
+                        if (currentShape === 'pentagon') shapeData.pentagon.points = generatePolygon(0, 0, newRadius, 5);
+                        else if (currentShape === 'hexagon') shapeData.hexagon.points = generatePolygon(0, 0, newRadius, 6);
+                        else if (currentShape === 'circle') shapeData.circle.points = generateCirclePoints(newRadius);
+                        updateARDilation();
+                    }
+                });
+                document.getElementById('resetRadiusBtn')?.addEventListener('click', () => {
+                    const defaultRadius = currentShape === 'pentagon' ? 1.0 : currentShape === 'hexagon' ? 0.9 : 1.0;
+                    shapeData[radiusKey].radius = defaultRadius;
+                    document.getElementById('radiusInput').value = defaultRadius;
+                    if (currentShape === 'pentagon') shapeData.pentagon.points = generatePolygon(0, 0, defaultRadius, 5);
+                    else if (currentShape === 'hexagon') shapeData.hexagon.points = generatePolygon(0, 0, defaultRadius, 6);
+                    else if (currentShape === 'circle') shapeData.circle.points = generateCirclePoints(defaultRadius);
+                    updateARDilation();
+                });
+            }
+        }
+        
+        // Jalankan init setelah DOM ready
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
